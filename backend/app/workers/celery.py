@@ -8,6 +8,7 @@ celery_app = Celery(
     "ambient_video",
     broker=redis_url,
     backend=redis_url,
+    include=["app.workers.image_tasks"],
 )
 
 

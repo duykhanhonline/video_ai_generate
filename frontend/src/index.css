@@ -1,0 +1,176 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #f7f7f8;
+  color: #1a1a1a;
+}
+
+.nav {
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.nav a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.image-prompt-text {
+  max-width: 280px;
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.9em;
+  color: #444;
+}
+
+.clip-thumbnail {
+  display: block;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.hint {
+  font-size: 0.9em;
+  color: #888;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.row-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.generate-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 16px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+}
+
+.generate-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.generate-box input,
+.generate-box textarea {
+  font-family: inherit;
+  font-weight: normal;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.generate-box button {
+  align-self: flex-start;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.form input,
+.form textarea,
+.form select {
+  font-family: inherit;
+  font-weight: normal;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.checklist {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}
+
+.checklist button {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.button {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+.error {
+  color: #dc2626;
+}

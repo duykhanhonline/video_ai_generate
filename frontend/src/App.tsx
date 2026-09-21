@@ -1,20 +1,26 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
+import ThemesPage from './pages/ThemesPage'
+import ThemeEditorPage from './pages/ThemeEditorPage'
+import ProjectsPage from './pages/ProjectsPage'
+import ProjectEditorPage from './pages/ProjectEditorPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
 
 function App() {
-  const [status, setStatus] = useState<string>('checking...')
-
-  useEffect(() => {
-    fetch('http://localhost:8000/health')
-      .then((res) => res.json())
-      .then((data) => setStatus(data.status))
-      .catch(() => setStatus('unreachable'))
-  }, [])
-
   return (
-    <div>
-      <h1>Ambient Video AI</h1>
-      <p>Backend status: {status}</p>
-    </div>
+    <BrowserRouter>
+      <nav className="nav">
+        <Link to="/">Themes</Link>
+        <Link to="/projects">Projects</Link>
+      </nav>
+      <Routes>
+        <Route path="/" element={<ThemesPage />} />
+        <Route path="/themes/new" element={<ThemeEditorPage />} />
+        <Route path="/themes/:id" element={<ThemeEditorPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/new" element={<ProjectEditorPage />} />
+        <Route path="/projects/:id" element={<ProjectDetailPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

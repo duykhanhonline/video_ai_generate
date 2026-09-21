@@ -5,3 +5,8 @@ redis
 sqlalchemy
 pymysql
 python-dotenv
+pydantic-settings
+alembic
+openai
+pytest
+pytest-asyncio
