@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+celery
+redis
+sqlalchemy
+pymysql
+python-dotenv
+pydantic-settings
+alembic
+openai
+python-multipart
+pytest
+pytest-asyncio
