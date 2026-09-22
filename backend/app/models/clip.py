@@ -16,6 +16,8 @@ class Clip(Base):
     approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     image_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    video_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    video_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -64,3 +64,7 @@ class ActivityGenerateRequest(BaseModel):
 
 class ImagePromptDraft(BaseModel):
     prompt: str
+
+
+class VideoPromptDraft(BaseModel):
+    prompt: str

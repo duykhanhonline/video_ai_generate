@@ -13,6 +13,8 @@ class ClipRead(BaseModel):
     approved: bool
     image_prompt: str | None
     image_asset_id: int | None
+    video_prompt: str | None
+    video_asset_id: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -23,3 +25,7 @@ class ClipsCreateRequest(BaseModel):
 
 class ImageGenerateRequest(BaseModel):
     force: bool = False
+
+
+class ClipUpdate(BaseModel):
+    approved: bool

@@ -17,3 +17,17 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
 
   return res.json() as Promise<T>
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`API error ${res.status}: ${body}`)
+  }
+
+  return res.json() as Promise<T>
+}

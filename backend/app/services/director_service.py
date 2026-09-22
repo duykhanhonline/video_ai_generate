@@ -2,7 +2,12 @@ import json
 
 from app.models.master_theme import MasterTheme
 from app.providers.base.llm import LLMProvider
-from app.schemas.ai_director import ActivityIdeasDraft, ImagePromptDraft, MasterThemeDraft
+from app.schemas.ai_director import (
+    ActivityIdeasDraft,
+    ImagePromptDraft,
+    MasterThemeDraft,
+    VideoPromptDraft,
+)
 
 SYSTEM_PROMPT = """You are the AI Director for an ambient video production platform.
 Your job is to expand a short creative idea into a structured Master Theme.
@@ -122,6 +127,30 @@ IMAGE_PROMPT_JSON_SCHEMA = {
     "additionalProperties": False,
 }
 
+VIDEO_PROMPT_SYSTEM_PROMPT = """You are the AI Director for an ambient video production platform.
+Generate a single Kling video animation prompt describing how a clip's starting image should
+animate into a short, loop-friendly ambient video.
+
+Rules:
+- The clip is independent ambient content, not a story beat. There is no plot.
+- Favor these kinds of movement: breathing, blinking, steam rising, fire flickering, leaves moving,
+  rain falling, snow falling, water rippling, clothing moving gently, hair moving gently.
+- Prefer: static camera, slow motion, subtle motion, environmental motion, small character movement.
+- Avoid: camera cuts, dramatic camera movement, character leaving frame, character entering frame,
+  large body movement, sudden lighting changes, scene transitions.
+- The end state should visually resemble the beginning, so the clip can loop cleanly.
+- Be specific and descriptive so a video generation model produces a consistent, subtle result.
+"""
+
+VIDEO_PROMPT_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "prompt": {"type": "string"},
+    },
+    "required": ["prompt"],
+    "additionalProperties": False,
+}
+
 
 class AIDirectorService:
     def __init__(self, llm_provider: LLMProvider) -> None:
@@ -174,3 +203,27 @@ class AIDirectorService:
             json_schema=IMAGE_PROMPT_JSON_SCHEMA,
         )
         return ImagePromptDraft.model_validate(raw)
+
+    async def generate_video_prompt(
+        self, theme: MasterTheme, activity: str, image_prompt: str
+    ) -> VideoPromptDraft:
+        theme_context = {
+            "name": theme.name,
+            "concept": theme.concept,
+            "character": theme.character_json,
+            "environment": theme.environment_json,
+            "visual_style": theme.visual_style_json,
+            "animation_rules": theme.animation_rules_json,
+        }
+        user_prompt = (
+            f"Master Theme:\n{json.dumps(theme_context, indent=2)}\n\n"
+            f'Activity for this clip: "{activity}"\n\n'
+            f"Starting image prompt (the first frame of the video):\n{image_prompt}\n\n"
+            "Generate a Kling video animation prompt describing how this image should move."
+        )
+        raw = await self._llm_provider.generate_structured(
+            system_prompt=VIDEO_PROMPT_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            json_schema=VIDEO_PROMPT_JSON_SCHEMA,
+        )
+        return VideoPromptDraft.model_validate(raw)

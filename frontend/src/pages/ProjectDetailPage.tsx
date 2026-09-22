@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { generateActivities, getProject, listClips, createClips } from '../api/projects'
-import { generateImagePrompt, generateClipImage } from '../api/clips'
+import {
+  generateImagePrompt,
+  generateClipImage,
+  generateVideoPrompt,
+  uploadClipVideo,
+  updateClip,
+} from '../api/clips'
 import { getJob } from '../api/jobs'
 import { getAsset } from '../api/assets'
 import { API_URL } from '../api/client'
@@ -32,7 +38,16 @@ function ProjectDetailPage() {
 
   const [imageGenerating, setImageGenerating] = useState<Set<number>>(new Set())
   const [imageErrors, setImageErrors] = useState<Record<number, string>>({})
-  const [imageUrls, setImageUrls] = useState<Record<number, string>>({})
+  const [assetUrls, setAssetUrls] = useState<Record<number, string>>({})
+
+  const [approvingId, setApprovingId] = useState<number | null>(null)
+  const [approveErrors, setApproveErrors] = useState<Record<number, string>>({})
+
+  const [videoPromptGeneratingId, setVideoPromptGeneratingId] = useState<number | null>(null)
+  const [videoPromptErrors, setVideoPromptErrors] = useState<Record<number, string>>({})
+
+  const [videoUploadingId, setVideoUploadingId] = useState<number | null>(null)
+  const [videoUploadErrors, setVideoUploadErrors] = useState<Record<number, string>>({})
 
   useEffect(() => {
     Promise.all([getProject(projectId), listClips(projectId)])
@@ -46,18 +61,20 @@ function ProjectDetailPage() {
 
   useEffect(() => {
     clips.forEach((clip) => {
-      if (clip.image_asset_id !== null && !(clip.image_asset_id in imageUrls)) {
-        const assetId = clip.image_asset_id
+      const assetIds = [clip.image_asset_id, clip.video_asset_id].filter(
+        (assetId): assetId is number => assetId !== null && !(assetId in assetUrls),
+      )
+      assetIds.forEach((assetId) => {
         getAsset(assetId)
           .then((asset) => {
-            setImageUrls((prev) => ({ ...prev, [assetId]: `${API_URL}/media/${asset.file_path}` }))
+            setAssetUrls((prev) => ({ ...prev, [assetId]: `${API_URL}/media/${asset.file_path}` }))
           })
           .catch(() => {
-            // Non-critical: thumbnail just won't render.
+            // Non-critical: thumbnail/player just won't render.
           })
-      }
+      })
     })
-  }, [clips, imageUrls])
+  }, [clips, assetUrls])
 
   async function handleGenerate() {
     setGenerateError(null)
@@ -158,6 +175,58 @@ function ProjectDetailPage() {
     }
   }
 
+  async function handleToggleApproved(clip: Clip) {
+    setApprovingId(clip.id)
+    setApproveErrors((prev) => {
+      const next = { ...prev }
+      delete next[clip.id]
+      return next
+    })
+    try {
+      const updatedClip = await updateClip(clip.id, !clip.approved)
+      setClips((prev) => prev.map((c) => (c.id === clip.id ? updatedClip : c)))
+    } catch (err) {
+      setApproveErrors((prev) => ({ ...prev, [clip.id]: (err as Error).message }))
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  async function handleGenerateVideoPrompt(clipId: number) {
+    setVideoPromptGeneratingId(clipId)
+    setVideoPromptErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await generateVideoPrompt(clipId)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+    } catch (err) {
+      setVideoPromptErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setVideoPromptGeneratingId(null)
+    }
+  }
+
+  async function handleUploadVideo(clipId: number, file: File | undefined) {
+    if (!file) return
+    setVideoUploadingId(clipId)
+    setVideoUploadErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await uploadClipVideo(clipId, file)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+    } catch (err) {
+      setVideoUploadErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setVideoUploadingId(null)
+    }
+  }
+
   if (loading) return <div className="page">Loading...</div>
   if (error) return <div className="page error">{error}</div>
   if (!project) return null
@@ -171,7 +240,8 @@ function ProjectDetailPage() {
 
       <p>
         Target duration: {project.target_duration}s &middot; Clips: {clips.length}/
-        {project.clip_count} &middot; Status: {project.status}
+        {project.clip_count} &middot; Images approved: {clips.filter((c) => c.approved).length}/
+        {clips.filter((c) => c.image_asset_id !== null).length} &middot; Status: {project.status}
       </p>
 
       <div className="generate-box">
@@ -222,6 +292,8 @@ function ProjectDetailPage() {
               <th>Approved</th>
               <th>Image Prompt</th>
               <th>Image</th>
+              <th>Video Prompt</th>
+              <th>Video</th>
             </tr>
           </thead>
           <tbody>
@@ -229,7 +301,16 @@ function ProjectDetailPage() {
               <tr key={clip.id}>
                 <td>{clip.activity}</td>
                 <td>{clip.status}</td>
-                <td>{clip.approved ? 'Yes' : 'No'}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={clip.approved}
+                    disabled={clip.image_asset_id === null || approvingId === clip.id}
+                    onChange={() => handleToggleApproved(clip)}
+                    title={clip.image_asset_id === null ? 'Generate an image first' : undefined}
+                  />
+                  {approveErrors[clip.id] && <p className="error">{approveErrors[clip.id]}</p>}
+                </td>
                 <td>
                   {clip.image_prompt && (
                     <p className="image-prompt-text" title={clip.image_prompt}>
@@ -250,12 +331,14 @@ function ProjectDetailPage() {
                   {promptErrors[clip.id] && <p className="error">{promptErrors[clip.id]}</p>}
                 </td>
                 <td>
-                  {clip.image_asset_id !== null && imageUrls[clip.image_asset_id] && (
-                    <img
-                      src={imageUrls[clip.image_asset_id]}
-                      alt={clip.activity}
-                      className="clip-thumbnail"
-                    />
+                  {clip.image_asset_id !== null && assetUrls[clip.image_asset_id] && (
+                    <a href={assetUrls[clip.image_asset_id]} target="_blank" rel="noreferrer">
+                      <img
+                        src={assetUrls[clip.image_asset_id]}
+                        alt={clip.activity}
+                        className="clip-thumbnail"
+                      />
+                    </a>
                   )}
                   {clip.image_prompt ? (
                     <button
@@ -273,6 +356,52 @@ function ProjectDetailPage() {
                     <span className="hint">Generate a prompt first</span>
                   )}
                   {imageErrors[clip.id] && <p className="error">{imageErrors[clip.id]}</p>}
+                </td>
+                <td>
+                  {clip.video_prompt && (
+                    <p className="image-prompt-text" title={clip.video_prompt}>
+                      {clip.video_prompt}
+                    </p>
+                  )}
+                  {clip.approved ? (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateVideoPrompt(clip.id)}
+                      disabled={videoPromptGeneratingId === clip.id}
+                    >
+                      {videoPromptGeneratingId === clip.id
+                        ? 'Generating...'
+                        : clip.video_prompt
+                          ? 'Regenerate Prompt'
+                          : 'Generate Prompt'}
+                    </button>
+                  ) : (
+                    <span className="hint">Approve the image first</span>
+                  )}
+                  {videoPromptErrors[clip.id] && (
+                    <p className="error">{videoPromptErrors[clip.id]}</p>
+                  )}
+                </td>
+                <td>
+                  {clip.video_asset_id !== null && assetUrls[clip.video_asset_id] && (
+                    <video controls className="clip-video" src={assetUrls[clip.video_asset_id]} />
+                  )}
+                  <button type="button" disabled title="Kling API integration is coming later">
+                    Generate with Kling (coming soon)
+                  </button>
+                  <label className="upload-label">
+                    {clip.video_asset_id ? 'Replace video:' : 'Upload video:'}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      disabled={videoUploadingId === clip.id}
+                      onChange={(e) => handleUploadVideo(clip.id, e.target.files?.[0])}
+                    />
+                  </label>
+                  {videoUploadingId === clip.id && <p className="hint">Uploading...</p>}
+                  {videoUploadErrors[clip.id] && (
+                    <p className="error">{videoUploadErrors[clip.id]}</p>
+                  )}
                 </td>
               </tr>
             ))}

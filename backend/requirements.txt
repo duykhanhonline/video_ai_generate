@@ -8,5 +8,6 @@ python-dotenv
 pydantic-settings
 alembic
 openai
+python-multipart
 pytest
 pytest-asyncio

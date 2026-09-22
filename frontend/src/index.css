@@ -51,11 +51,27 @@ body {
 
 .clip-thumbnail {
   display: block;
-  width: 100px;
-  height: 100px;
+  width: 140px;
+  height: 140px;
   object-fit: cover;
   border-radius: 4px;
   margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.clip-video {
+  display: block;
+  width: 180px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.upload-label {
+  display: block;
+  font-size: 0.85em;
+  font-weight: normal;
+  color: #444;
+  margin-top: 8px;
 }
 
 .hint {

@@ -103,3 +103,26 @@ async def test_generate_image_prompt_rejects_invalid_response() -> None:
 
     with pytest.raises(ValidationError):
         await director.generate_image_prompt(theme, "Drinking tea")
+
+
+async def test_generate_video_prompt_returns_validated_prompt() -> None:
+    provider = FakeLLMProvider(
+        {"prompt": "Steam gently rises from the tea as the samurai's kimono sways slightly."}
+    )
+    director = AIDirectorService(llm_provider=provider)
+    theme = MasterTheme(name="Lone Samurai", concept="A solitary samurai in rural Japan.")
+
+    result = await director.generate_video_prompt(
+        theme, "Drinking tea", "A calm samurai drinking tea on a wooden porch."
+    )
+
+    assert result.prompt == "Steam gently rises from the tea as the samurai's kimono sways slightly."
+
+
+async def test_generate_video_prompt_rejects_invalid_response() -> None:
+    provider = FakeLLMProvider({"prompt": None})
+    director = AIDirectorService(llm_provider=provider)
+    theme = MasterTheme(name="Lone Samurai", concept="A solitary samurai in rural Japan.")
+
+    with pytest.raises(ValidationError):
+        await director.generate_video_prompt(theme, "Drinking tea", "A calm samurai drinking tea.")
