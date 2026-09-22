@@ -10,3 +10,5 @@ __pycache__/
 mysql_data/
 
 backend/logs/*.log
+
+backend/alembic/
