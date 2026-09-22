@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
@@ -10,6 +11,8 @@ from app.providers.registry import get_image_provider
 from app.services.image_generation_service import ImageGenerationService
 from app.services.storage_service import StorageService
 from app.workers.celery import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task
@@ -34,10 +37,30 @@ async def _generate_clip_image(job_id: int, clip_id: int) -> None:
         try:
             image_provider = get_image_provider(project.image_provider)
             service = ImageGenerationService(image_provider, StorageService())
-            result = await service.generate_clip_image(project.id, clip_id, clip.image_prompt)
+
+            logger.info(
+                "Sending image generation prompt: project_id=%s clip_id=%s job_id=%s "
+                "provider=%s size=%s reference_image=%s prompt=%r",
+                project.id,
+                clip_id,
+                job_id,
+                image_provider.provider_name,
+                clip.image_ratio,
+                clip.reference_image_path,
+                clip.image_prompt,
+            )
+
+            result = await service.generate_clip_image(
+                project.id,
+                clip_id,
+                clip.image_prompt,
+                clip.image_ratio,
+                clip.reference_image_path,
+            )
 
             asset = Asset(
                 project_id=project.id,
+                clip_id=clip_id,
                 asset_type="generated_image",
                 provider=result.provider,
                 provider_model=result.provider_model,

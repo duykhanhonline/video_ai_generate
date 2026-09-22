@@ -8,6 +8,7 @@ __pycache__/
 .venv/
 
 mysql_data/
+data/
 
 backend/logs/*.log
 

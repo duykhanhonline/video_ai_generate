@@ -15,6 +15,8 @@ class Clip(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     image_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_ratio: Mapped[str] = mapped_column(String(20), nullable=False, default="1024x1024")
+    reference_image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     image_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
     video_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     video_asset_id: Mapped[int | None] = mapped_column(ForeignKey("assets.id"), nullable=True)

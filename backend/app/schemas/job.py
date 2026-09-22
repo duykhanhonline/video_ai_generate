@@ -1,6 +1,15 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+JobStatus = Literal["PENDING", "RUNNING", "WAITING_PROVIDER", "COMPLETED", "FAILED", "CANCELLED"]
+
+
+class JobUpdate(BaseModel):
+    status: JobStatus | None = None
+    progress: int | None = None
+    error_message: str | None = None
 
 
 class JobRead(BaseModel):

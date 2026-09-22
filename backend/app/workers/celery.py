@@ -15,6 +15,11 @@ celery_app = Celery(
     include=["app.workers.image_tasks"],
 )
 
+# Celery hijacks the root logger by default, stripping any handlers configured
+# before startup (including our rotating file handler). Disable that so
+# configure_logging()'s file handler actually receives worker log output.
+celery_app.conf.worker_hijack_root_logger = False
+
 
 @celery_app.task
 def ping() -> str:

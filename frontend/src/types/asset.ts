@@ -1,6 +1,7 @@
 export interface Asset {
   id: number
   project_id: number
+  clip_id: number | null
   asset_type: string
   provider: string
   provider_model: string

@@ -1,6 +1,7 @@
 import { apiRequest, apiUpload } from './client'
-import type { Clip } from '../types/clip'
+import type { Clip, ImageRatio } from '../types/clip'
 import type { Job } from '../types/job'
+import type { Asset } from '../types/asset'
 
 export function generateImagePrompt(clipId: number): Promise<Clip> {
   return apiRequest(`/api/clips/${clipId}/image-prompt/generate`, { method: 'POST' })
@@ -28,4 +29,40 @@ export function updateClip(clipId: number, approved: boolean): Promise<Clip> {
     method: 'PATCH',
     body: JSON.stringify({ approved }),
   })
+}
+
+export function updateClipImagePrompt(clipId: number, imagePrompt: string): Promise<Clip> {
+  return apiRequest(`/api/clips/${clipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ image_prompt: imagePrompt }),
+  })
+}
+
+export function updateClipImageRatio(clipId: number, imageRatio: ImageRatio): Promise<Clip> {
+  return apiRequest(`/api/clips/${clipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ image_ratio: imageRatio }),
+  })
+}
+
+export function updateClipReferenceImage(clipId: number, referenceImagePath: string): Promise<Clip> {
+  return apiRequest(`/api/clips/${clipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reference_image_path: referenceImagePath || null }),
+  })
+}
+
+export function listClipImages(clipId: number): Promise<Asset[]> {
+  return apiRequest(`/api/clips/${clipId}/images`)
+}
+
+export function selectClipImage(clipId: number, assetId: number): Promise<Clip> {
+  return apiRequest(`/api/clips/${clipId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ image_asset_id: assetId }),
+  })
+}
+
+export function deleteClip(clipId: number): Promise<void> {
+  return apiRequest(`/api/clips/${clipId}`, { method: 'DELETE' })
 }

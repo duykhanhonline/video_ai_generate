@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+ImageRatio = Literal["1024x1024", "1536x1024", "1024x1536"]
 
 
 class ClipRead(BaseModel):
@@ -12,6 +15,8 @@ class ClipRead(BaseModel):
     status: str
     approved: bool
     image_prompt: str | None
+    image_ratio: str
+    reference_image_path: str | None
     image_asset_id: int | None
     video_prompt: str | None
     video_asset_id: int | None
@@ -28,4 +33,8 @@ class ImageGenerateRequest(BaseModel):
 
 
 class ClipUpdate(BaseModel):
-    approved: bool
+    approved: bool | None = None
+    image_prompt: str | None = None
+    image_ratio: ImageRatio | None = None
+    reference_image_path: str | None = None
+    image_asset_id: int | None = None

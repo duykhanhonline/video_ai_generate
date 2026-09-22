@@ -9,6 +9,7 @@ class AssetRead(BaseModel):
 
     id: int
     project_id: int
+    clip_id: int | None
     asset_type: str
     provider: str
     provider_model: str

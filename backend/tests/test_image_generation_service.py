@@ -18,7 +18,9 @@ class FakeImageProvider(ImageProvider):
     def model_name(self) -> str:
         return "fake-model"
 
-    async def generate(self, prompt: str, reference_images: list[str] | None = None) -> str:
+    async def generate(
+        self, prompt: str, size: str = "1024x1024", reference_images: list[str] | None = None
+    ) -> str:
         return self._image_b64
 
 

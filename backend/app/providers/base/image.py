@@ -16,6 +16,7 @@ class ImageProvider(ABC):
     async def generate(
         self,
         prompt: str,
+        size: str = "1024x1024",
         reference_images: list[str] | None = None,
     ) -> str:
         raise NotImplementedError

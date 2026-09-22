@@ -37,16 +37,17 @@ body {
   margin-top: 16px;
 }
 
-.image-prompt-text {
-  max-width: 280px;
+.image-prompt-input {
+  display: block;
+  width: 260px;
   margin: 0 0 8px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  padding: 6px;
+  font-family: inherit;
   font-size: 0.9em;
   color: #444;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
 }
 
 .clip-thumbnail {
@@ -57,6 +58,47 @@ body {
   border-radius: 4px;
   margin-bottom: 8px;
   cursor: pointer;
+}
+
+.thumbnail-button {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.modal-close {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  font-size: 2em;
+  line-height: 1;
+  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
 }
 
 .clip-video {
@@ -72,6 +114,64 @@ body {
   font-weight: normal;
   color: #444;
   margin-top: 8px;
+}
+
+.ratio-label {
+  display: block;
+  font-size: 0.85em;
+  font-weight: normal;
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.ratio-label select {
+  margin-left: 4px;
+}
+
+.reference-input {
+  display: block;
+  width: 240px;
+  margin-top: 2px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 0.85em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.history-toggle {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.85em;
+}
+
+.image-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  max-width: 280px;
+}
+
+.image-history-item {
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.image-history-item img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.image-history-item.selected {
+  border-color: #2563eb;
+  cursor: default;
 }
 
 .hint {
@@ -189,4 +289,73 @@ button {
 
 .error {
   color: #dc2626;
+}
+
+.delete-clip-button {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.music-upload-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 16px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+}
+
+.music-upload-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.music-upload-form input {
+  font-family: inherit;
+  font-weight: normal;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.music-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.music-title {
+  min-width: 160px;
+  font-weight: 600;
+}
+
+.manifest-summary {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+}
+
+.manifest-summary code {
+  background: #dcfce7;
+  padding: 1px 4px;
+  border-radius: 3px;
 }

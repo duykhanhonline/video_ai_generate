@@ -7,13 +7,30 @@ import {
   generateVideoPrompt,
   uploadClipVideo,
   updateClip,
+  updateClipImagePrompt,
+  updateClipImageRatio,
+  updateClipReferenceImage,
+  listClipImages,
+  selectClipImage,
+  deleteClip,
 } from '../api/clips'
 import { getJob } from '../api/jobs'
 import { getAsset } from '../api/assets'
+import { listProjectMusic, uploadMusicTrack, deleteMusicTrack } from '../api/music'
+import { exportRenderManifest, listRenderJobs } from '../api/render'
 import { API_URL } from '../api/client'
 import type { Project } from '../types/project'
-import type { Clip } from '../types/clip'
+import type { Clip, ImageRatio } from '../types/clip'
 import type { Job } from '../types/job'
+import type { Asset } from '../types/asset'
+import type { MusicTrack } from '../types/musicTrack'
+import type { RenderManifest } from '../types/renderManifest'
+
+const IMAGE_RATIO_OPTIONS: { value: ImageRatio; label: string }[] = [
+  { value: '1024x1024', label: 'Square (1:1)' },
+  { value: '1536x1024', label: '16:9 (YouTube)' },
+  { value: '1024x1536', label: 'Portrait (2:3)' },
+]
 
 function ProjectDetailPage() {
   const { id } = useParams()
@@ -36,9 +53,28 @@ function ProjectDetailPage() {
   const [promptGeneratingId, setPromptGeneratingId] = useState<number | null>(null)
   const [promptErrors, setPromptErrors] = useState<Record<number, string>>({})
 
+  const [promptDrafts, setPromptDrafts] = useState<Record<number, string>>({})
+  const [promptSavingId, setPromptSavingId] = useState<number | null>(null)
+  const [promptSaveErrors, setPromptSaveErrors] = useState<Record<number, string>>({})
+
   const [imageGenerating, setImageGenerating] = useState<Set<number>>(new Set())
   const [imageErrors, setImageErrors] = useState<Record<number, string>>({})
   const [assetUrls, setAssetUrls] = useState<Record<number, string>>({})
+
+  const [ratioSavingId, setRatioSavingId] = useState<number | null>(null)
+  const [ratioErrors, setRatioErrors] = useState<Record<number, string>>({})
+
+  const [referenceDrafts, setReferenceDrafts] = useState<Record<number, string>>({})
+  const [referenceSavingId, setReferenceSavingId] = useState<number | null>(null)
+  const [referenceErrors, setReferenceErrors] = useState<Record<number, string>>({})
+
+  const [imageHistory, setImageHistory] = useState<Record<number, Asset[]>>({})
+  const [historyOpenId, setHistoryOpenId] = useState<number | null>(null)
+  const [historyLoadingId, setHistoryLoadingId] = useState<number | null>(null)
+  const [historyErrors, setHistoryErrors] = useState<Record<number, string>>({})
+  const [selectingImageId, setSelectingImageId] = useState<number | null>(null)
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const [approvingId, setApprovingId] = useState<number | null>(null)
   const [approveErrors, setApproveErrors] = useState<Record<number, string>>({})
@@ -49,6 +85,38 @@ function ProjectDetailPage() {
   const [videoUploadingId, setVideoUploadingId] = useState<number | null>(null)
   const [videoUploadErrors, setVideoUploadErrors] = useState<Record<number, string>>({})
 
+  const [deletingClipId, setDeletingClipId] = useState<number | null>(null)
+  const [deleteClipErrors, setDeleteClipErrors] = useState<Record<number, string>>({})
+
+  const [musicTracks, setMusicTracks] = useState<MusicTrack[]>([])
+  const [musicLoading, setMusicLoading] = useState(true)
+  const [musicError, setMusicError] = useState<string | null>(null)
+
+  const [newMusicTitle, setNewMusicTitle] = useState('')
+  const [newMusicFile, setNewMusicFile] = useState<File | null>(null)
+  const [uploadingMusic, setUploadingMusic] = useState(false)
+  const [uploadMusicError, setUploadMusicError] = useState<string | null>(null)
+
+  const [deletingMusicId, setDeletingMusicId] = useState<number | null>(null)
+  const [deleteMusicErrors, setDeleteMusicErrors] = useState<Record<number, string>>({})
+
+  const [manifest, setManifest] = useState<RenderManifest | null>(null)
+  const [exportingManifest, setExportingManifest] = useState(false)
+  const [exportManifestError, setExportManifestError] = useState<string | null>(null)
+
+  const [renderJobs, setRenderJobs] = useState<Job[]>([])
+  const [renderJobsLoading, setRenderJobsLoading] = useState(true)
+  const [renderJobsError, setRenderJobsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!previewUrl) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPreviewUrl(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [previewUrl])
+
   useEffect(() => {
     Promise.all([getProject(projectId), listClips(projectId)])
       .then(([proj, clipList]) => {
@@ -57,6 +125,26 @@ function ProjectDetailPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
+  }, [projectId])
+
+  useEffect(() => {
+    listProjectMusic(projectId)
+      .then(setMusicTracks)
+      .catch((err) => setMusicError(err.message))
+      .finally(() => setMusicLoading(false))
+  }, [projectId])
+
+  function loadRenderJobs() {
+    setRenderJobsLoading(true)
+    listRenderJobs(projectId)
+      .then(setRenderJobs)
+      .catch((err) => setRenderJobsError(err.message))
+      .finally(() => setRenderJobsLoading(false))
+  }
+
+  useEffect(() => {
+    loadRenderJobs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 
   useEffect(() => {
@@ -128,10 +216,41 @@ function ProjectDetailPage() {
     try {
       const updatedClip = await generateImagePrompt(clipId)
       setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+      setPromptDrafts((prev) => {
+        const next = { ...prev }
+        delete next[clipId]
+        return next
+      })
     } catch (err) {
       setPromptErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
     } finally {
       setPromptGeneratingId(null)
+    }
+  }
+
+  function handlePromptDraftChange(clipId: number, value: string) {
+    setPromptDrafts((prev) => ({ ...prev, [clipId]: value }))
+  }
+
+  async function handleSavePrompt(clipId: number, prompt: string) {
+    setPromptSavingId(clipId)
+    setPromptSaveErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await updateClipImagePrompt(clipId, prompt)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+      setPromptDrafts((prev) => {
+        const next = { ...prev }
+        delete next[clipId]
+        return next
+      })
+    } catch (err) {
+      setPromptSaveErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setPromptSavingId(null)
     }
   }
 
@@ -163,6 +282,11 @@ function ProjectDetailPage() {
       } else {
         const updatedClips = await listClips(projectId)
         setClips(updatedClips)
+        setImageHistory((prev) => {
+          const next = { ...prev }
+          delete next[clipId]
+          return next
+        })
       }
     } catch (err) {
       setImageErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
@@ -172,6 +296,164 @@ function ProjectDetailPage() {
         next.delete(clipId)
         return next
       })
+    }
+  }
+
+  async function toggleImageHistory(clipId: number) {
+    if (historyOpenId === clipId) {
+      setHistoryOpenId(null)
+      return
+    }
+    setHistoryOpenId(clipId)
+    if (imageHistory[clipId]) return
+
+    setHistoryLoadingId(clipId)
+    setHistoryErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const images = await listClipImages(clipId)
+      setImageHistory((prev) => ({ ...prev, [clipId]: images }))
+    } catch (err) {
+      setHistoryErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setHistoryLoadingId(null)
+    }
+  }
+
+  async function handleSelectImage(clipId: number, assetId: number) {
+    setSelectingImageId(assetId)
+    setHistoryErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await selectClipImage(clipId, assetId)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+    } catch (err) {
+      setHistoryErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setSelectingImageId(null)
+    }
+  }
+
+  async function handleChangeRatio(clipId: number, ratio: ImageRatio) {
+    setRatioSavingId(clipId)
+    setRatioErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await updateClipImageRatio(clipId, ratio)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+    } catch (err) {
+      setRatioErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setRatioSavingId(null)
+    }
+  }
+
+  async function handleDeleteClip(clipId: number) {
+    if (
+      !confirm(
+        'Delete this clip? This permanently removes its prompts, prompt history, reference setting, generated images, generated video, and jobs. This cannot be undone.',
+      )
+    ) {
+      return
+    }
+    setDeletingClipId(clipId)
+    setDeleteClipErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      await deleteClip(clipId)
+      setClips((prev) => prev.filter((c) => c.id !== clipId))
+    } catch (err) {
+      setDeleteClipErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setDeletingClipId(null)
+    }
+  }
+
+  async function handleUploadMusic(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newMusicFile || !newMusicTitle.trim()) return
+
+    setUploadingMusic(true)
+    setUploadMusicError(null)
+    try {
+      const track = await uploadMusicTrack(projectId, newMusicFile, newMusicTitle.trim())
+      setMusicTracks((prev) => [track, ...prev])
+      setNewMusicTitle('')
+      setNewMusicFile(null)
+    } catch (err) {
+      setUploadMusicError((err as Error).message)
+    } finally {
+      setUploadingMusic(false)
+    }
+  }
+
+  async function handleDeleteMusic(trackId: number) {
+    if (!confirm('Delete this music track? This cannot be undone.')) return
+
+    setDeletingMusicId(trackId)
+    setDeleteMusicErrors((prev) => {
+      const next = { ...prev }
+      delete next[trackId]
+      return next
+    })
+    try {
+      await deleteMusicTrack(trackId)
+      setMusicTracks((prev) => prev.filter((t) => t.id !== trackId))
+    } catch (err) {
+      setDeleteMusicErrors((prev) => ({ ...prev, [trackId]: (err as Error).message }))
+    } finally {
+      setDeletingMusicId(null)
+    }
+  }
+
+  async function handleExportManifest() {
+    setExportingManifest(true)
+    setExportManifestError(null)
+    try {
+      const result = await exportRenderManifest(projectId)
+      setManifest(result)
+    } catch (err) {
+      setExportManifestError((err as Error).message)
+    } finally {
+      setExportingManifest(false)
+    }
+  }
+
+  function handleReferenceDraftChange(clipId: number, value: string) {
+    setReferenceDrafts((prev) => ({ ...prev, [clipId]: value }))
+  }
+
+  async function handleSaveReference(clipId: number, path: string) {
+    setReferenceSavingId(clipId)
+    setReferenceErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const updatedClip = await updateClipReferenceImage(clipId, path)
+      setClips((prev) => prev.map((c) => (c.id === clipId ? updatedClip : c)))
+      setReferenceDrafts((prev) => {
+        const next = { ...prev }
+        delete next[clipId]
+        return next
+      })
+    } catch (err) {
+      setReferenceErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setReferenceSavingId(null)
     }
   }
 
@@ -294,6 +576,7 @@ function ProjectDetailPage() {
               <th>Image</th>
               <th>Video Prompt</th>
               <th>Video</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -312,34 +595,95 @@ function ProjectDetailPage() {
                   {approveErrors[clip.id] && <p className="error">{approveErrors[clip.id]}</p>}
                 </td>
                 <td>
-                  {clip.image_prompt && (
-                    <p className="image-prompt-text" title={clip.image_prompt}>
-                      {clip.image_prompt}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateImagePrompt(clip.id)}
-                    disabled={promptGeneratingId === clip.id}
-                  >
-                    {promptGeneratingId === clip.id
-                      ? 'Generating...'
-                      : clip.image_prompt
-                        ? 'Regenerate Prompt'
-                        : 'Generate Prompt'}
-                  </button>
+                  <textarea
+                    className="image-prompt-input"
+                    rows={3}
+                    value={promptDrafts[clip.id] ?? clip.image_prompt ?? ''}
+                    onChange={(e) => handlePromptDraftChange(clip.id, e.target.value)}
+                    placeholder="No prompt yet. Generate one or type your own."
+                  />
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateImagePrompt(clip.id)}
+                      disabled={promptGeneratingId === clip.id}
+                    >
+                      {promptGeneratingId === clip.id
+                        ? 'Generating...'
+                        : clip.image_prompt
+                          ? 'Regenerate Prompt'
+                          : 'Generate Prompt'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSavePrompt(clip.id, promptDrafts[clip.id] ?? '')}
+                      disabled={
+                        promptSavingId === clip.id ||
+                        !(clip.id in promptDrafts) ||
+                        promptDrafts[clip.id] === (clip.image_prompt ?? '')
+                      }
+                    >
+                      {promptSavingId === clip.id ? 'Saving...' : 'Save Prompt'}
+                    </button>
+                  </div>
                   {promptErrors[clip.id] && <p className="error">{promptErrors[clip.id]}</p>}
+                  {promptSaveErrors[clip.id] && <p className="error">{promptSaveErrors[clip.id]}</p>}
                 </td>
                 <td>
                   {clip.image_asset_id !== null && assetUrls[clip.image_asset_id] && (
-                    <a href={assetUrls[clip.image_asset_id]} target="_blank" rel="noreferrer">
+                    <button
+                      type="button"
+                      className="thumbnail-button"
+                      onClick={() => setPreviewUrl(assetUrls[clip.image_asset_id!])}
+                    >
                       <img
                         src={assetUrls[clip.image_asset_id]}
                         alt={clip.activity}
                         className="clip-thumbnail"
                       />
-                    </a>
+                    </button>
                   )}
+                  <label className="ratio-label">
+                    Reference image path:
+                    <input
+                      type="text"
+                      className="reference-input"
+                      value={referenceDrafts[clip.id] ?? clip.reference_image_path ?? ''}
+                      onChange={(e) => handleReferenceDraftChange(clip.id, e.target.value)}
+                      placeholder="projects/3/images/clip_3_xyz.png"
+                    />
+                  </label>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSaveReference(clip.id, referenceDrafts[clip.id] ?? '')
+                      }
+                      disabled={
+                        referenceSavingId === clip.id ||
+                        !(clip.id in referenceDrafts) ||
+                        referenceDrafts[clip.id] === (clip.reference_image_path ?? '')
+                      }
+                    >
+                      {referenceSavingId === clip.id ? 'Saving...' : 'Save Reference'}
+                    </button>
+                  </div>
+                  {referenceErrors[clip.id] && <p className="error">{referenceErrors[clip.id]}</p>}
+                  <label className="ratio-label">
+                    Ratio:
+                    <select
+                      value={clip.image_ratio}
+                      disabled={ratioSavingId === clip.id}
+                      onChange={(e) => handleChangeRatio(clip.id, e.target.value as ImageRatio)}
+                    >
+                      {IMAGE_RATIO_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {ratioErrors[clip.id] && <p className="error">{ratioErrors[clip.id]}</p>}
                   {clip.image_prompt ? (
                     <button
                       type="button"
@@ -356,12 +700,50 @@ function ProjectDetailPage() {
                     <span className="hint">Generate a prompt first</span>
                   )}
                   {imageErrors[clip.id] && <p className="error">{imageErrors[clip.id]}</p>}
+
+                  <button
+                    type="button"
+                    className="history-toggle"
+                    onClick={() => toggleImageHistory(clip.id)}
+                  >
+                    {historyOpenId === clip.id ? 'Hide Previous Images' : 'Previous Images'}
+                  </button>
+                  {historyOpenId === clip.id && (
+                    <div className="image-history">
+                      {historyLoadingId === clip.id && <p className="hint">Loading...</p>}
+                      {historyErrors[clip.id] && <p className="error">{historyErrors[clip.id]}</p>}
+                      {imageHistory[clip.id]?.length === 0 && (
+                        <p className="hint">No previous images.</p>
+                      )}
+                      {imageHistory[clip.id]?.map((asset) => (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          className={
+                            asset.id === clip.image_asset_id
+                              ? 'image-history-item selected'
+                              : 'image-history-item'
+                          }
+                          onClick={() => handleSelectImage(clip.id, asset.id)}
+                          disabled={asset.id === clip.image_asset_id || selectingImageId === asset.id}
+                          title={
+                            asset.id === clip.image_asset_id ? 'Currently selected' : 'Use this image'
+                          }
+                        >
+                          <img src={`${API_URL}/media/${asset.file_path}`} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td>
                   {clip.video_prompt && (
-                    <p className="image-prompt-text" title={clip.video_prompt}>
-                      {clip.video_prompt}
-                    </p>
+                    <textarea
+                      className="image-prompt-input"
+                      rows={3}
+                      value={clip.video_prompt}
+                      readOnly
+                    />
                   )}
                   {clip.approved ? (
                     <button
@@ -403,10 +785,160 @@ function ProjectDetailPage() {
                     <p className="error">{videoUploadErrors[clip.id]}</p>
                   )}
                 </td>
+                <td>
+                  <button
+                    type="button"
+                    className="delete-clip-button"
+                    onClick={() => handleDeleteClip(clip.id)}
+                    disabled={deletingClipId === clip.id}
+                  >
+                    {deletingClipId === clip.id ? 'Deleting...' : 'Delete Clip'}
+                  </button>
+                  {deleteClipErrors[clip.id] && (
+                    <p className="error">{deleteClipErrors[clip.id]}</p>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      <h2>Music</h2>
+      <p className="hint">
+        Music is independent of individual clips and forms a shared, reusable pool for this
+        project.
+      </p>
+
+      <form onSubmit={handleUploadMusic} className="music-upload-form">
+        <label>
+          Title
+          <input
+            type="text"
+            value={newMusicTitle}
+            onChange={(e) => setNewMusicTitle(e.target.value)}
+            placeholder="Rainy atmosphere"
+            required
+          />
+        </label>
+        <label>
+          Audio file
+          <input
+            type="file"
+            accept="audio/*"
+            onChange={(e) => setNewMusicFile(e.target.files?.[0] ?? null)}
+            required
+          />
+        </label>
+        <button type="submit" disabled={uploadingMusic || !newMusicFile || !newMusicTitle.trim()}>
+          {uploadingMusic ? 'Uploading...' : 'Upload Track'}
+        </button>
+        {uploadMusicError && <p className="error">{uploadMusicError}</p>}
+      </form>
+
+      {musicError && <p className="error">{musicError}</p>}
+      {musicLoading && <p>Loading music...</p>}
+      {!musicLoading && musicTracks.length === 0 && <p>No music tracks yet.</p>}
+
+      {musicTracks.length > 0 && (
+        <ul className="music-list">
+          {musicTracks.map((track) => (
+            <li key={track.id} className="music-list-item">
+              <span className="music-title">{track.title}</span>
+              <audio controls src={`${API_URL}/media/${track.file_path}`} />
+              <button
+                type="button"
+                className="delete-clip-button"
+                onClick={() => handleDeleteMusic(track.id)}
+                disabled={deletingMusicId === track.id}
+              >
+                {deletingMusicId === track.id ? 'Deleting...' : 'Delete'}
+              </button>
+              {deleteMusicErrors[track.id] && (
+                <p className="error">{deleteMusicErrors[track.id]}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h2>Render</h2>
+      <p className="hint">
+        Export a manifest of the approved clip videos and music tracks, then run your host-side
+        render agent (outside this app) to build the final long video with your existing
+        Python + FFmpeg pipeline.
+      </p>
+
+      <button type="button" onClick={handleExportManifest} disabled={exportingManifest}>
+        {exportingManifest ? 'Exporting...' : 'Export Render Manifest'}
+      </button>
+      {exportManifestError && <p className="error">{exportManifestError}</p>}
+
+      {manifest && (
+        <div className="manifest-summary">
+          <p>
+            Saved to <code>projects/{manifest.project_id}/manifests/manifest.json</code>
+          </p>
+          <p>
+            {manifest.videos.length} approved video(s) &middot; {manifest.music.length} music
+            track(s) &middot; target duration {manifest.target_duration}s
+          </p>
+        </div>
+      )}
+
+      <h3>Render Jobs</h3>
+      <button type="button" onClick={loadRenderJobs} disabled={renderJobsLoading}>
+        {renderJobsLoading ? 'Refreshing...' : 'Refresh'}
+      </button>
+      {renderJobsError && <p className="error">{renderJobsError}</p>}
+      {!renderJobsLoading && renderJobs.length === 0 && (
+        <p className="hint">
+          No render jobs yet. Export a manifest, then run your render agent on the host.
+        </p>
+      )}
+
+      {renderJobs.length > 0 && (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {renderJobs.map((job) => (
+              <tr key={job.id}>
+                <td>{job.status}</td>
+                <td>{job.progress}%</td>
+                <td>{job.started_at ? new Date(job.started_at).toLocaleString() : '-'}</td>
+                <td>{job.completed_at ? new Date(job.completed_at).toLocaleString() : '-'}</td>
+                <td>{job.error_message && <span className="error">{job.error_message}</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {previewUrl && (
+        <div className="modal-overlay" onClick={() => setPreviewUrl(null)}>
+          <button
+            type="button"
+            className="modal-close"
+            onClick={() => setPreviewUrl(null)}
+            aria-label="Close preview"
+          >
+            &times;
+          </button>
+          <img
+            src={previewUrl}
+            alt="Full size preview"
+            className="modal-image"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )

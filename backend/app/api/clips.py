@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.asset import Asset
 from app.models.clip import Clip
@@ -14,6 +15,7 @@ from app.models.master_theme import MasterTheme
 from app.models.project import Project
 from app.models.prompt_version import PromptVersion
 from app.providers.registry import get_llm_provider
+from app.schemas.asset import AssetRead
 from app.schemas.clip import ClipRead, ClipUpdate, ImageGenerateRequest
 from app.schemas.job import JobRead
 from app.services.director_service import AIDirectorService
@@ -157,6 +159,21 @@ def generate_clip_image(
     return job
 
 
+@router.get("/{clip_id}/images", response_model=list[AssetRead])
+def list_clip_images(clip_id: int, db: Session = Depends(get_db)) -> list[Asset]:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    return list(
+        db.scalars(
+            select(Asset)
+            .where(Asset.clip_id == clip_id, Asset.asset_type == "generated_image")
+            .order_by(Asset.created_at.desc())
+        ).all()
+    )
+
+
 @router.post("/{clip_id}/video/upload", response_model=ClipRead)
 async def upload_clip_video(
     clip_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
@@ -178,6 +195,7 @@ async def upload_clip_video(
 
     asset = Asset(
         project_id=project.id,
+        clip_id=clip_id,
         asset_type="generated_video",
         provider="manual",
         provider_model="manual",
@@ -199,12 +217,104 @@ def update_clip(clip_id: int, payload: ClipUpdate, db: Session = Depends(get_db)
     clip = db.get(Clip, clip_id)
     if clip is None:
         raise HTTPException(status_code=404, detail="Clip not found")
-    if payload.approved and clip.image_asset_id is None:
-        raise HTTPException(
-            status_code=400, detail="Clip has no generated image yet. Nothing to approve."
-        )
 
-    clip.approved = payload.approved
+    update_data = payload.model_dump(exclude_unset=True)
+
+    if "approved" in update_data:
+        if update_data["approved"] and clip.image_asset_id is None:
+            raise HTTPException(
+                status_code=400, detail="Clip has no generated image yet. Nothing to approve."
+            )
+        clip.approved = update_data["approved"]
+
+    if "image_prompt" in update_data:
+        new_prompt = update_data["image_prompt"]
+        if new_prompt != clip.image_prompt:
+            existing_versions = db.scalars(
+                select(PromptVersion.version).where(
+                    PromptVersion.clip_id == clip_id, PromptVersion.prompt_type == "image"
+                )
+            ).all()
+            next_version = max(existing_versions, default=0) + 1
+            db.add(
+                PromptVersion(
+                    project_id=clip.project_id,
+                    clip_id=clip_id,
+                    prompt_type="image",
+                    provider="manual",
+                    model="manual",
+                    prompt=new_prompt,
+                    version=next_version,
+                )
+            )
+            clip.image_prompt = new_prompt
+
+    if "image_ratio" in update_data:
+        clip.image_ratio = update_data["image_ratio"]
+
+    if "reference_image_path" in update_data:
+        new_reference_path = update_data["reference_image_path"]
+        if new_reference_path:
+            full_path = Path(get_settings().media_root) / new_reference_path
+            if not full_path.is_file():
+                raise HTTPException(
+                    status_code=400, detail=f"Reference image not found: {new_reference_path}"
+                )
+        clip.reference_image_path = new_reference_path
+
+    if "image_asset_id" in update_data and update_data["image_asset_id"] is not None:
+        asset_id = update_data["image_asset_id"]
+        asset = db.get(Asset, asset_id)
+        if (
+            asset is None
+            or asset.clip_id != clip_id
+            or asset.asset_type != "generated_image"
+        ):
+            raise HTTPException(
+                status_code=400, detail="Asset does not belong to this clip's image history."
+            )
+        clip.image_asset_id = asset.id
+
     db.commit()
     db.refresh(clip)
     return clip
+
+
+@router.delete("/{clip_id}", status_code=204)
+def delete_clip(clip_id: int, db: Session = Depends(get_db)) -> None:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    storage = StorageService()
+
+    # Break the clip -> asset pointers first so the assets below can be
+    # deleted without violating the assets.clip_id -> clips.id foreign key.
+    clip.image_asset_id = None
+    clip.video_asset_id = None
+    db.flush()
+
+    # Clip/Asset/PromptVersion/Job have no ORM relationship() declared between
+    # them (plain FK columns only), so SQLAlchemy's unit-of-work can't infer
+    # delete order automatically. Flush after each group so the dependent
+    # rows are actually gone in the database before the next delete runs.
+    assets = db.scalars(select(Asset).where(Asset.clip_id == clip_id)).all()
+    for asset in assets:
+        storage.delete_file(asset.file_path)
+        db.delete(asset)
+    db.flush()
+
+    prompt_versions = db.scalars(
+        select(PromptVersion).where(PromptVersion.clip_id == clip_id)
+    ).all()
+    for prompt_version in prompt_versions:
+        db.delete(prompt_version)
+    db.flush()
+
+    jobs = db.scalars(select(Job).where(Job.clip_id == clip_id)).all()
+    for job in jobs:
+        db.delete(job)
+    db.flush()
+
+    db.delete(clip)
+    db.commit()

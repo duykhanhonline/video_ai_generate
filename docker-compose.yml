@@ -17,7 +17,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - media_data:/data
+      - ./data:/data
     env_file:
       - .env
     depends_on:
@@ -29,7 +29,7 @@ services:
     build: ./backend
     volumes:
       - ./backend:/app
-      - media_data:/data
+      - ./data:/data
     env_file:
       - .env
     depends_on:
@@ -58,7 +58,6 @@ services:
       - db-network  
 volumes:
   mysql_data:
-  media_data:
 networks:
   db-network:
     external: true    

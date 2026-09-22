@@ -11,6 +11,7 @@ class Asset(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    clip_id: Mapped[int | None] = mapped_column(ForeignKey("clips.id"), nullable=True)
     asset_type: Mapped[str] = mapped_column(String(50), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     provider_model: Mapped[str] = mapped_column(String(100), nullable=False)
