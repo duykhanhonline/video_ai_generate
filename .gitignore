@@ -12,4 +12,7 @@ data/
 
 backend/logs/*.log
 
+host_agent/render_agent.pid
+host_agent/*.log
+
 backend/alembic/

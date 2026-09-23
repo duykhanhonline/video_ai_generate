@@ -14,6 +14,12 @@ class StorageService:
         full_path.write_bytes(data)
         return relative_path
 
+    def save_file(self, relative_path: str, data: bytes) -> str:
+        full_path = self._media_root / relative_path
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.write_bytes(data)
+        return relative_path
+
     def delete_file(self, relative_path: str) -> None:
         full_path = self._media_root / relative_path
         full_path.unlink(missing_ok=True)

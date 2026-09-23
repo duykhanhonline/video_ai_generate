@@ -15,3 +15,10 @@ export function uploadMusicTrack(projectId: number, file: File, title: string): 
 export function deleteMusicTrack(trackId: number): Promise<void> {
   return apiRequest(`/api/music/${trackId}`, { method: 'DELETE' })
 }
+
+export function updateMusicTrack(trackId: number, approved: boolean): Promise<MusicTrack> {
+  return apiRequest(`/api/music/${trackId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ approved }),
+  })
+}

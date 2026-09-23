@@ -2,6 +2,7 @@ import { apiRequest, apiUpload } from './client'
 import type { Clip, ImageRatio } from '../types/clip'
 import type { Job } from '../types/job'
 import type { Asset } from '../types/asset'
+import type { RenderManifest } from '../types/renderManifest'
 
 export function generateImagePrompt(clipId: number): Promise<Clip> {
   return apiRequest(`/api/clips/${clipId}/image-prompt/generate`, { method: 'POST' })
@@ -65,4 +66,8 @@ export function selectClipImage(clipId: number, assetId: number): Promise<Clip> 
 
 export function deleteClip(clipId: number): Promise<void> {
   return apiRequest(`/api/clips/${clipId}`, { method: 'DELETE' })
+}
+
+export function exportClipManifest(clipId: number): Promise<RenderManifest> {
+  return apiRequest(`/api/clips/${clipId}/render-manifest`)
 }

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     openai_api_key: str = ""
 
+    jwt_secret: str = "dev-secret-change-me"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

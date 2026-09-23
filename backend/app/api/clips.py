@@ -1,5 +1,7 @@
+import json
 import logging
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -12,12 +14,14 @@ from app.models.asset import Asset
 from app.models.clip import Clip
 from app.models.job import Job
 from app.models.master_theme import MasterTheme
+from app.models.music_track import MusicTrack
 from app.models.project import Project
 from app.models.prompt_version import PromptVersion
 from app.providers.registry import get_llm_provider
 from app.schemas.asset import AssetRead
 from app.schemas.clip import ClipRead, ClipUpdate, ImageGenerateRequest
 from app.schemas.job import JobRead
+from app.schemas.render_manifest import RenderManifest
 from app.services.director_service import AIDirectorService
 from app.services.storage_service import StorageService
 from app.workers.image_tasks import generate_clip_image_task
@@ -221,9 +225,10 @@ def update_clip(clip_id: int, payload: ClipUpdate, db: Session = Depends(get_db)
     update_data = payload.model_dump(exclude_unset=True)
 
     if "approved" in update_data:
-        if update_data["approved"] and clip.image_asset_id is None:
+        if update_data["approved"] and clip.image_asset_id is None and clip.video_asset_id is None:
             raise HTTPException(
-                status_code=400, detail="Clip has no generated image yet. Nothing to approve."
+                status_code=400,
+                detail="Clip has no generated image or video yet. Nothing to approve.",
             )
         clip.approved = update_data["approved"]
 
@@ -318,3 +323,105 @@ def delete_clip(clip_id: int, db: Session = Depends(get_db)) -> None:
 
     db.delete(clip)
     db.commit()
+
+
+@router.get("/{clip_id}/render-manifest", response_model=RenderManifest)
+def export_clip_render_manifest(clip_id: int, db: Session = Depends(get_db)) -> RenderManifest:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    if not clip.approved or clip.video_asset_id is None:
+        raise HTTPException(
+            status_code=400, detail="Clip has no approved video yet. Nothing to export."
+        )
+
+    project = db.get(Project, clip.project_id)
+    video_asset = db.get(Asset, clip.video_asset_id)
+
+    music_paths = db.scalars(
+        select(Asset.file_path)
+        .join(MusicTrack, MusicTrack.asset_id == Asset.id)
+        .where(MusicTrack.project_id == project.id, MusicTrack.approved.is_(True))
+        .order_by(MusicTrack.id)
+    ).all()
+
+    manifest = RenderManifest(
+        project_id=project.id,
+        clip_id=clip.id,
+        project_name=project.name,
+        target_duration=project.target_duration,
+        videos=[video_asset.file_path],
+        music=list(music_paths),
+    )
+
+    StorageService().save_file(
+        f"manifest/{project.id}_{clip.id}_manifest.json",
+        json.dumps(manifest.model_dump(), indent=2).encode(),
+    )
+
+    # Make the export visible as a job right away, so the UI can distinguish
+    # "exported, waiting for the host agent to pick it up" from "no agent is
+    # running at all" -- both currently look like silence otherwise. Don't
+    # duplicate if one's already pending/running for this clip (e.g. the
+    # user clicked Export again before the agent got to the first one).
+    existing_active_job = db.scalars(
+        select(Job).where(
+            Job.clip_id == clip_id,
+            Job.job_type == "render_video",
+            Job.status.in_(["PENDING", "RUNNING"]),
+        )
+    ).first()
+    if existing_active_job is None:
+        db.add(
+            Job(
+                project_id=project.id,
+                clip_id=clip.id,
+                job_type="render_video",
+                provider="host_ffmpeg",
+                status="PENDING",
+            )
+        )
+        db.commit()
+
+    return manifest
+
+
+@router.post("/{clip_id}/render-jobs", response_model=JobRead, status_code=200)
+def create_clip_render_job(clip_id: int, db: Session = Depends(get_db)) -> Job:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    # A PENDING job was created when the manifest was exported (see
+    # export_clip_render_manifest above) -- transition that to RUNNING
+    # instead of creating a second job, so the export-time job doesn't sit
+    # there stale once rendering actually starts.
+    pending_job = db.scalars(
+        select(Job)
+        .where(
+            Job.clip_id == clip_id,
+            Job.job_type == "render_video",
+            Job.status == "PENDING",
+        )
+        .order_by(Job.created_at.desc())
+    ).first()
+
+    if pending_job is not None:
+        pending_job.status = "RUNNING"
+        pending_job.started_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(pending_job)
+        return pending_job
+
+    job = Job(
+        project_id=clip.project_id,
+        clip_id=clip.id,
+        job_type="render_video",
+        provider="host_ffmpeg",
+        status="RUNNING",
+        started_at=datetime.now(UTC),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job

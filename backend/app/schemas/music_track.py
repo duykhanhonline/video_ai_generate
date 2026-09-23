@@ -3,6 +3,10 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class MusicTrackUpdate(BaseModel):
+    approved: bool | None = None
+
+
 class MusicTrackRead(BaseModel):
     id: int
     project_id: int

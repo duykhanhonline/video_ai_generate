@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.models.asset import Asset
 from app.models.music_track import MusicTrack
 from app.models.project import Project
-from app.schemas.music_track import MusicTrackRead
+from app.schemas.music_track import MusicTrackRead, MusicTrackUpdate
 from app.services.storage_service import StorageService
 
 router = APIRouter(tags=["music"])
@@ -81,6 +81,25 @@ async def upload_music_track(
     db.refresh(track)
     db.refresh(asset)
 
+    return _to_music_track_read(track, asset)
+
+
+@router.patch("/api/music/{track_id}", response_model=MusicTrackRead)
+def update_music_track(
+    track_id: int, payload: MusicTrackUpdate, db: Session = Depends(get_db)
+) -> MusicTrackRead:
+    track = db.get(MusicTrack, track_id)
+    if track is None:
+        raise HTTPException(status_code=404, detail="Music track not found")
+
+    update_data = payload.model_dump(exclude_unset=True)
+    if "approved" in update_data:
+        track.approved = update_data["approved"]
+
+    db.commit()
+    db.refresh(track)
+
+    asset = db.get(Asset, track.asset_id)
     return _to_music_track_read(track, asset)
 
 

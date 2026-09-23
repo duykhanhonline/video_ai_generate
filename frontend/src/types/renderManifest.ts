@@ -1,5 +1,6 @@
 export interface RenderManifest {
   project_id: number
+  clip_id: number
   project_name: string
   target_duration: number
   videos: string[]

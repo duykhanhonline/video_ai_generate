@@ -13,11 +13,12 @@ import {
   listClipImages,
   selectClipImage,
   deleteClip,
+  exportClipManifest,
 } from '../api/clips'
 import { getJob } from '../api/jobs'
 import { getAsset } from '../api/assets'
-import { listProjectMusic, uploadMusicTrack, deleteMusicTrack } from '../api/music'
-import { exportRenderManifest, listRenderJobs } from '../api/render'
+import { listProjectMusic, uploadMusicTrack, deleteMusicTrack, updateMusicTrack } from '../api/music'
+import { listRenderJobs } from '../api/render'
 import { API_URL } from '../api/client'
 import type { Project } from '../types/project'
 import type { Clip, ImageRatio } from '../types/clip'
@@ -100,9 +101,12 @@ function ProjectDetailPage() {
   const [deletingMusicId, setDeletingMusicId] = useState<number | null>(null)
   const [deleteMusicErrors, setDeleteMusicErrors] = useState<Record<number, string>>({})
 
-  const [manifest, setManifest] = useState<RenderManifest | null>(null)
-  const [exportingManifest, setExportingManifest] = useState(false)
-  const [exportManifestError, setExportManifestError] = useState<string | null>(null)
+  const [togglingMusicId, setTogglingMusicId] = useState<number | null>(null)
+  const [toggleMusicErrors, setToggleMusicErrors] = useState<Record<number, string>>({})
+
+  const [clipManifests, setClipManifests] = useState<Record<number, RenderManifest>>({})
+  const [exportingManifestId, setExportingManifestId] = useState<number | null>(null)
+  const [exportManifestErrors, setExportManifestErrors] = useState<Record<number, string>>({})
 
   const [renderJobs, setRenderJobs] = useState<Job[]>([])
   const [renderJobsLoading, setRenderJobsLoading] = useState(true)
@@ -399,6 +403,23 @@ function ProjectDetailPage() {
     }
   }
 
+  async function handleToggleMusicIncluded(trackId: number, approved: boolean) {
+    setTogglingMusicId(trackId)
+    setToggleMusicErrors((prev) => {
+      const next = { ...prev }
+      delete next[trackId]
+      return next
+    })
+    try {
+      const updated = await updateMusicTrack(trackId, approved)
+      setMusicTracks((prev) => prev.map((t) => (t.id === trackId ? updated : t)))
+    } catch (err) {
+      setToggleMusicErrors((prev) => ({ ...prev, [trackId]: (err as Error).message }))
+    } finally {
+      setTogglingMusicId(null)
+    }
+  }
+
   async function handleDeleteMusic(trackId: number) {
     if (!confirm('Delete this music track? This cannot be undone.')) return
 
@@ -418,16 +439,20 @@ function ProjectDetailPage() {
     }
   }
 
-  async function handleExportManifest() {
-    setExportingManifest(true)
-    setExportManifestError(null)
+  async function handleExportClipManifest(clipId: number) {
+    setExportingManifestId(clipId)
+    setExportManifestErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
     try {
-      const result = await exportRenderManifest(projectId)
-      setManifest(result)
+      const result = await exportClipManifest(clipId)
+      setClipManifests((prev) => ({ ...prev, [clipId]: result }))
     } catch (err) {
-      setExportManifestError((err as Error).message)
+      setExportManifestErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
     } finally {
-      setExportingManifest(false)
+      setExportingManifestId(null)
     }
   }
 
@@ -588,9 +613,16 @@ function ProjectDetailPage() {
                   <input
                     type="checkbox"
                     checked={clip.approved}
-                    disabled={clip.image_asset_id === null || approvingId === clip.id}
+                    disabled={
+                      (clip.image_asset_id === null && clip.video_asset_id === null) ||
+                      approvingId === clip.id
+                    }
                     onChange={() => handleToggleApproved(clip)}
-                    title={clip.image_asset_id === null ? 'Generate an image first' : undefined}
+                    title={
+                      clip.image_asset_id === null && clip.video_asset_id === null
+                        ? 'Generate an image or upload a video first'
+                        : undefined
+                    }
                   />
                   {approveErrors[clip.id] && <p className="error">{approveErrors[clip.id]}</p>}
                 </td>
@@ -788,6 +820,35 @@ function ProjectDetailPage() {
                 <td>
                   <button
                     type="button"
+                    onClick={() => handleExportClipManifest(clip.id)}
+                    disabled={
+                      !clip.approved ||
+                      clip.video_asset_id === null ||
+                      exportingManifestId === clip.id
+                    }
+                    title={
+                      !clip.approved || clip.video_asset_id === null
+                        ? 'Approve a generated video first'
+                        : undefined
+                    }
+                  >
+                    {exportingManifestId === clip.id ? 'Exporting...' : 'Export Manifest'}
+                  </button>
+                  {exportManifestErrors[clip.id] && (
+                    <p className="error">{exportManifestErrors[clip.id]}</p>
+                  )}
+                  {clipManifests[clip.id] && (
+                    <p className="hint">
+                      Saved to{' '}
+                      <code>
+                        manifest/{clipManifests[clip.id].project_id}_
+                        {clipManifests[clip.id].clip_id}_manifest.json
+                      </code>
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
                     className="delete-clip-button"
                     onClick={() => handleDeleteClip(clip.id)}
                     disabled={deletingClipId === clip.id}
@@ -844,8 +905,20 @@ function ProjectDetailPage() {
         <ul className="music-list">
           {musicTracks.map((track) => (
             <li key={track.id} className="music-list-item">
+              <label className="music-include-label">
+                <input
+                  type="checkbox"
+                  checked={track.approved}
+                  disabled={togglingMusicId === track.id}
+                  onChange={(e) => handleToggleMusicIncluded(track.id, e.target.checked)}
+                />
+                Include in manifest
+              </label>
               <span className="music-title">{track.title}</span>
               <audio controls src={`${API_URL}/media/${track.file_path}`} />
+              {toggleMusicErrors[track.id] && (
+                <p className="error">{toggleMusicErrors[track.id]}</p>
+              )}
               <button
                 type="button"
                 className="delete-clip-button"
@@ -864,27 +937,10 @@ function ProjectDetailPage() {
 
       <h2>Render</h2>
       <p className="hint">
-        Export a manifest of the approved clip videos and music tracks, then run your host-side
-        render agent (outside this app) to build the final long video with your existing
-        Python + FFmpeg pipeline.
+        Use the "Export Manifest" button on an approved clip (in the Clips table above) to write
+        a manifest for that clip's video, then run your host-side render agent (outside this app)
+        to build the video with your existing Python + FFmpeg pipeline.
       </p>
-
-      <button type="button" onClick={handleExportManifest} disabled={exportingManifest}>
-        {exportingManifest ? 'Exporting...' : 'Export Render Manifest'}
-      </button>
-      {exportManifestError && <p className="error">{exportManifestError}</p>}
-
-      {manifest && (
-        <div className="manifest-summary">
-          <p>
-            Saved to <code>projects/{manifest.project_id}/manifests/manifest.json</code>
-          </p>
-          <p>
-            {manifest.videos.length} approved video(s) &middot; {manifest.music.length} music
-            track(s) &middot; target duration {manifest.target_duration}s
-          </p>
-        </div>
-      )}
 
       <h3>Render Jobs</h3>
       <button type="button" onClick={loadRenderJobs} disabled={renderJobsLoading}>

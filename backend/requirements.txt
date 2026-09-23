@@ -9,5 +9,8 @@ pydantic-settings
 alembic
 openai
 python-multipart
+bcrypt
+pyjwt
+email-validator
 pytest
 pytest-asyncio
