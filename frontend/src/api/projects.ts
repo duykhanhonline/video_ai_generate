@@ -1,9 +1,14 @@
 import { apiRequest } from './client'
-import type { ActivityIdeas, Project, ProjectInput } from '../types/project'
+import type { ActivityIdeas, Project, ProjectInput, ProjectReviewSummary } from '../types/project'
 import type { Clip } from '../types/clip'
+import type { ProjectCompletedVideo } from '../types/completedVideo'
 
 export function listProjects(): Promise<Project[]> {
   return apiRequest('/api/projects')
+}
+
+export function getProjectReviewSummary(): Promise<ProjectReviewSummary[]> {
+  return apiRequest('/api/projects/review-summary')
 }
 
 export function getProject(id: number): Promise<Project> {
@@ -33,4 +38,8 @@ export function createClips(projectId: number, activities: string[]): Promise<Cl
     method: 'POST',
     body: JSON.stringify({ activities }),
   })
+}
+
+export function listProjectCompletedVideos(projectId: number): Promise<ProjectCompletedVideo[]> {
+  return apiRequest(`/api/projects/${projectId}/completed-videos`)
 }

@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.assets import router as assets_router
 from app.api.auth import router as auth_router
+from app.api.categories import router as categories_router
 from app.api.clips import router as clips_router
 from app.api.jobs import router as jobs_router
 from app.api.music import router as music_router
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(categories_router)
 app.include_router(themes_router)
 app.include_router(projects_router)
 app.include_router(clips_router)

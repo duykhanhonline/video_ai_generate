@@ -3,6 +3,7 @@ import type { Clip, ImageRatio } from '../types/clip'
 import type { Job } from '../types/job'
 import type { Asset } from '../types/asset'
 import type { RenderManifest } from '../types/renderManifest'
+import type { CompletedVideo } from '../types/completedVideo'
 
 export function generateImagePrompt(clipId: number): Promise<Clip> {
   return apiRequest(`/api/clips/${clipId}/image-prompt/generate`, { method: 'POST' })
@@ -70,4 +71,18 @@ export function deleteClip(clipId: number): Promise<void> {
 
 export function exportClipManifest(clipId: number): Promise<RenderManifest> {
   return apiRequest(`/api/clips/${clipId}/render-manifest`)
+}
+
+export function uploadCompletedVideo(clipId: number, file: File): Promise<CompletedVideo> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiUpload(`/api/clips/${clipId}/completed-videos/upload`, formData)
+}
+
+export function listCompletedVideos(clipId: number): Promise<CompletedVideo[]> {
+  return apiRequest(`/api/clips/${clipId}/completed-videos`)
+}
+
+export function deleteCompletedVideo(completedVideoId: number): Promise<void> {
+  return apiRequest(`/api/clips/completed-videos/${completedVideoId}`, { method: 'DELETE' })
 }

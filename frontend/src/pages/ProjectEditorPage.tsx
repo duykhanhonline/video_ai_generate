@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listThemes } from '../api/themes'
 import { createProject } from '../api/projects'
+import { listCategories } from '../api/categories'
 import type { MasterTheme } from '../types/masterTheme'
+import type { Category } from '../types/category'
 
 function ProjectEditorPage() {
   const navigate = useNavigate()
@@ -11,11 +13,14 @@ function ProjectEditorPage() {
   const [themesLoading, setThemesLoading] = useState(true)
   const [themesError, setThemesError] = useState<string | null>(null)
 
+  const [categories, setCategories] = useState<Category[]>([])
+
   const [masterThemeId, setMasterThemeId] = useState('')
   const [name, setName] = useState('')
   const [clipCount, setClipCount] = useState(10)
   const [musicCount, setMusicCount] = useState(10)
   const [targetDuration, setTargetDuration] = useState(3600)
+  const [categoryId, setCategoryId] = useState('')
 
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -28,6 +33,12 @@ function ProjectEditorPage() {
       })
       .catch((err) => setThemesError(err.message))
       .finally(() => setThemesLoading(false))
+
+    listCategories()
+      .then(setCategories)
+      .catch(() => {
+        // Non-critical: category picker just won't have options.
+      })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,6 +58,7 @@ function ProjectEditorPage() {
         clip_count: clipCount,
         music_count: musicCount,
         target_duration: targetDuration,
+        category_id: categoryId ? Number(categoryId) : null,
       })
       navigate(`/projects/${project.id}`)
     } catch (err) {
@@ -77,6 +89,18 @@ function ProjectEditorPage() {
               {themes.map((theme) => (
                 <option key={theme.id} value={theme.id}>
                   {theme.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Category (optional)
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">None</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
                 </option>
               ))}
             </select>

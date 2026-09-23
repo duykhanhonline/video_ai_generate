@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.asset import Asset
 from app.models.clip import Clip
+from app.models.completed_video import CompletedVideo
 from app.models.job import Job
 from app.models.master_theme import MasterTheme
 from app.models.music_track import MusicTrack
@@ -20,6 +21,7 @@ from app.models.prompt_version import PromptVersion
 from app.providers.registry import get_llm_provider
 from app.schemas.asset import AssetRead
 from app.schemas.clip import ClipRead, ClipUpdate, ImageGenerateRequest
+from app.schemas.completed_video import CompletedVideoRead
 from app.schemas.job import JobRead
 from app.schemas.render_manifest import RenderManifest
 from app.services.director_service import AIDirectorService
@@ -214,6 +216,90 @@ async def upload_clip_video(
     db.commit()
     db.refresh(clip)
     return clip
+
+
+def _to_completed_video_read(video: CompletedVideo, asset: Asset) -> CompletedVideoRead:
+    return CompletedVideoRead(
+        id=video.id,
+        clip_id=video.clip_id,
+        asset_id=video.asset_id,
+        file_path=asset.file_path,
+        mime_type=asset.mime_type,
+        created_at=video.created_at,
+    )
+
+
+@router.post("/{clip_id}/completed-videos/upload", response_model=CompletedVideoRead, status_code=201)
+async def upload_completed_video(
+    clip_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> CompletedVideoRead:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    if not (file.content_type or "").startswith("video/"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be a video.")
+
+    project = db.get(Project, clip.project_id)
+
+    data = await file.read()
+    extension = Path(file.filename or "").suffix or ".mp4"
+    filename = f"clip_{clip_id}_completed_{uuid.uuid4().hex[:8]}{extension}"
+
+    storage = StorageService()
+    relative_path = storage.save_project_file(project.id, "renders", filename, data)
+
+    asset = Asset(
+        project_id=project.id,
+        clip_id=clip_id,
+        asset_type="completed_video",
+        provider="manual",
+        provider_model="manual",
+        file_path=relative_path,
+        mime_type=file.content_type or "video/mp4",
+    )
+    db.add(asset)
+    db.flush()
+
+    completed_video = CompletedVideo(clip_id=clip_id, asset_id=asset.id)
+    db.add(completed_video)
+    db.commit()
+    db.refresh(completed_video)
+    db.refresh(asset)
+
+    return _to_completed_video_read(completed_video, asset)
+
+
+@router.get("/{clip_id}/completed-videos", response_model=list[CompletedVideoRead])
+def list_completed_videos(clip_id: int, db: Session = Depends(get_db)) -> list[CompletedVideoRead]:
+    clip = db.get(Clip, clip_id)
+    if clip is None:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    rows = db.execute(
+        select(CompletedVideo, Asset)
+        .join(Asset, CompletedVideo.asset_id == Asset.id)
+        .where(CompletedVideo.clip_id == clip_id)
+        .order_by(CompletedVideo.created_at.desc())
+    ).all()
+    return [_to_completed_video_read(video, asset) for video, asset in rows]
+
+
+@router.delete("/completed-videos/{completed_video_id}", status_code=204)
+def delete_completed_video(completed_video_id: int, db: Session = Depends(get_db)) -> None:
+    completed_video = db.get(CompletedVideo, completed_video_id)
+    if completed_video is None:
+        raise HTTPException(status_code=404, detail="Completed video not found")
+
+    asset = db.get(Asset, completed_video.asset_id)
+
+    db.delete(completed_video)
+    db.flush()
+
+    if asset is not None:
+        StorageService().delete_file(asset.file_path)
+        db.delete(asset)
+
+    db.commit()
 
 
 @router.patch("/{clip_id}", response_model=ClipRead)

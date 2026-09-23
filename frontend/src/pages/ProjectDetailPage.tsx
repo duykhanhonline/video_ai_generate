@@ -14,6 +14,9 @@ import {
   selectClipImage,
   deleteClip,
   exportClipManifest,
+  uploadCompletedVideo,
+  listCompletedVideos,
+  deleteCompletedVideo,
 } from '../api/clips'
 import { getJob } from '../api/jobs'
 import { getAsset } from '../api/assets'
@@ -26,6 +29,7 @@ import type { Job } from '../types/job'
 import type { Asset } from '../types/asset'
 import type { MusicTrack } from '../types/musicTrack'
 import type { RenderManifest } from '../types/renderManifest'
+import type { CompletedVideo } from '../types/completedVideo'
 
 const IMAGE_RATIO_OPTIONS: { value: ImageRatio; label: string }[] = [
   { value: '1024x1024', label: 'Square (1:1)' },
@@ -85,6 +89,13 @@ function ProjectDetailPage() {
 
   const [videoUploadingId, setVideoUploadingId] = useState<number | null>(null)
   const [videoUploadErrors, setVideoUploadErrors] = useState<Record<number, string>>({})
+
+  const [completedVideos, setCompletedVideos] = useState<Record<number, CompletedVideo[]>>({})
+  const [completedVideosOpenId, setCompletedVideosOpenId] = useState<number | null>(null)
+  const [completedVideosLoadingId, setCompletedVideosLoadingId] = useState<number | null>(null)
+  const [completedVideoErrors, setCompletedVideoErrors] = useState<Record<number, string>>({})
+  const [completedVideoUploadingId, setCompletedVideoUploadingId] = useState<number | null>(null)
+  const [deletingCompletedVideoId, setDeletingCompletedVideoId] = useState<number | null>(null)
 
   const [deletingClipId, setDeletingClipId] = useState<number | null>(null)
   const [deleteClipErrors, setDeleteClipErrors] = useState<Record<number, string>>({})
@@ -534,6 +545,69 @@ function ProjectDetailPage() {
     }
   }
 
+  async function toggleCompletedVideos(clipId: number) {
+    if (completedVideosOpenId === clipId) {
+      setCompletedVideosOpenId(null)
+      return
+    }
+    setCompletedVideosOpenId(clipId)
+    if (completedVideos[clipId]) return
+
+    setCompletedVideosLoadingId(clipId)
+    setCompletedVideoErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const videos = await listCompletedVideos(clipId)
+      setCompletedVideos((prev) => ({ ...prev, [clipId]: videos }))
+    } catch (err) {
+      setCompletedVideoErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setCompletedVideosLoadingId(null)
+    }
+  }
+
+  async function handleUploadCompletedVideo(clipId: number, file: File | undefined) {
+    if (!file) return
+    setCompletedVideoUploadingId(clipId)
+    setCompletedVideoErrors((prev) => {
+      const next = { ...prev }
+      delete next[clipId]
+      return next
+    })
+    try {
+      const video = await uploadCompletedVideo(clipId, file)
+      setCompletedVideos((prev) => ({
+        ...prev,
+        [clipId]: [video, ...(prev[clipId] ?? [])],
+      }))
+      setCompletedVideosOpenId(clipId)
+    } catch (err) {
+      setCompletedVideoErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setCompletedVideoUploadingId(null)
+    }
+  }
+
+  async function handleDeleteCompletedVideo(clipId: number, videoId: number) {
+    if (!confirm('Delete this completed video? This cannot be undone.')) return
+
+    setDeletingCompletedVideoId(videoId)
+    try {
+      await deleteCompletedVideo(videoId)
+      setCompletedVideos((prev) => ({
+        ...prev,
+        [clipId]: (prev[clipId] ?? []).filter((v) => v.id !== videoId),
+      }))
+    } catch (err) {
+      setCompletedVideoErrors((prev) => ({ ...prev, [clipId]: (err as Error).message }))
+    } finally {
+      setDeletingCompletedVideoId(null)
+    }
+  }
+
   if (loading) return <div className="page">Loading...</div>
   if (error) return <div className="page error">{error}</div>
   if (!project) return null
@@ -815,6 +889,55 @@ function ProjectDetailPage() {
                   {videoUploadingId === clip.id && <p className="hint">Uploading...</p>}
                   {videoUploadErrors[clip.id] && (
                     <p className="error">{videoUploadErrors[clip.id]}</p>
+                  )}
+
+                  <label className="upload-label">
+                    Upload completed video:
+                    <input
+                      type="file"
+                      accept="video/*"
+                      disabled={completedVideoUploadingId === clip.id}
+                      onChange={(e) => handleUploadCompletedVideo(clip.id, e.target.files?.[0])}
+                    />
+                  </label>
+                  {completedVideoUploadingId === clip.id && <p className="hint">Uploading...</p>}
+
+                  <button
+                    type="button"
+                    className="history-toggle"
+                    onClick={() => toggleCompletedVideos(clip.id)}
+                  >
+                    {completedVideosOpenId === clip.id
+                      ? 'Hide Completed Videos'
+                      : 'Completed Videos'}
+                  </button>
+                  {completedVideoErrors[clip.id] && (
+                    <p className="error">{completedVideoErrors[clip.id]}</p>
+                  )}
+                  {completedVideosOpenId === clip.id && (
+                    <div className="completed-videos-list">
+                      {completedVideosLoadingId === clip.id && <p className="hint">Loading...</p>}
+                      {completedVideos[clip.id]?.length === 0 && (
+                        <p className="hint">No completed videos yet.</p>
+                      )}
+                      {completedVideos[clip.id]?.map((video) => (
+                        <div key={video.id} className="completed-video-item">
+                          <video
+                            controls
+                            className="clip-video"
+                            src={`${API_URL}/media/${video.file_path}`}
+                          />
+                          <button
+                            type="button"
+                            className="delete-clip-button"
+                            onClick={() => handleDeleteCompletedVideo(clip.id, video.id)}
+                            disabled={deletingCompletedVideoId === video.id}
+                          >
+                            {deletingCompletedVideoId === video.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </td>
                 <td>

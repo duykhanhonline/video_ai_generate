@@ -4,6 +4,9 @@ import ThemeEditorPage from './pages/ThemeEditorPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectEditorPage from './pages/ProjectEditorPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
+import CategoriesPage from './pages/CategoriesPage'
+import ReviewerDashboardPage from './pages/ReviewerDashboardPage'
+import ReviewerProjectVideosPage from './pages/ReviewerProjectVideosPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -14,8 +17,14 @@ function NavBar() {
 
   return (
     <nav className="nav">
-      <Link to="/">Themes</Link>
-      <Link to="/projects">Projects</Link>
+      {user?.role !== 'reviewer' && (
+        <>
+          <Link to="/">Themes</Link>
+          <Link to="/projects">Projects</Link>
+          <Link to="/categories">Categories</Link>
+        </>
+      )}
+      {user?.role === 'reviewer' && <Link to="/reviewer">Review</Link>}
       {user && (
         <span className="nav-user">
           {user.email} ({user.role})
@@ -57,6 +66,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <ThemeEditorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute>
+                <CategoriesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reviewer"
+            element={
+              <ProtectedRoute>
+                <ReviewerDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reviewer/projects/:id"
+            element={
+              <ProtectedRoute>
+                <ReviewerProjectVideosPage />
               </ProtectedRoute>
             }
           />

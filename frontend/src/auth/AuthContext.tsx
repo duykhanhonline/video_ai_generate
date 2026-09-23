@@ -6,7 +6,7 @@ import type { User } from '../types/user'
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   logout: () => void
 }
 
@@ -27,10 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<User> {
     const result = await loginRequest(email, password)
     setAuthToken(result.access_token)
     setUser(result.user)
+    return result.user
   }
 
   function logout() {

@@ -5,7 +5,7 @@
 # Usage:   .\start_render_agent.ps1
 # Stop:    .\stop_render_agent.ps1
 # Logs:    render_agent.log (stdout), render_agent.err.log (stderr)
-
+# Check:   Get-Process -Id (Get-Content .\render_agent.pid) -ErrorAction SilentlyContinue
 $ErrorActionPreference = "Stop"
 
 $pidFile = Join-Path $PSScriptRoot "render_agent.pid"

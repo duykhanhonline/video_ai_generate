@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -20,6 +20,7 @@ class MasterTheme(Base):
     music_style_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     reference_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

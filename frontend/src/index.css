@@ -117,6 +117,47 @@ body {
   margin-bottom: 8px;
 }
 
+.video-thumbnail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.video-thumbnail-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.video-thumbnail-player {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+  background: #000;
+}
+
+.video-thumbnail-label {
+  margin: 8px 0 0 0;
+  font-size: 0.9em;
+  color: #444;
+}
+
+.completed-videos-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.completed-video-item {
+  padding: 8px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
 .upload-label {
   display: block;
   font-size: 0.85em;

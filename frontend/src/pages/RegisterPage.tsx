@@ -20,8 +20,8 @@ function RegisterPage() {
     setSubmitting(true)
     try {
       await register(email, password, role)
-      await login(email, password)
-      navigate('/')
+      const user = await login(email, password)
+      navigate(user.role === 'reviewer' ? '/reviewer' : '/')
     } catch (err) {
       setError((err as Error).message)
     } finally {

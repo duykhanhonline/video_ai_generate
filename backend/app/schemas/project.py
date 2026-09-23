@@ -12,6 +12,7 @@ class ProjectBase(BaseModel):
     image_provider: str = "openai"
     video_provider: str = "kling"
     music_provider: str = "manual"
+    category_id: int | None = None
 
 
 class ProjectCreate(ProjectBase):
@@ -23,5 +24,13 @@ class ProjectRead(ProjectBase):
 
     id: int
     status: str
+    owner_id: int | None
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectReviewSummary(BaseModel):
+    project_id: int
+    project_name: str
+    category_name: str | None
+    completed_video_count: int

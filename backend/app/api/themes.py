@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.auth import get_current_user
 from app.core.database import get_db
 from app.models.master_theme import MasterTheme
+from app.models.user import User
 from app.providers.registry import get_llm_provider
 from app.schemas.ai_director import MasterThemeDraft, MasterThemeGenerateRequest
 from app.schemas.master_theme import MasterThemeCreate, MasterThemeRead, MasterThemeUpdate
@@ -29,8 +31,12 @@ async def generate_master_theme(payload: MasterThemeGenerateRequest) -> MasterTh
 
 
 @router.post("", response_model=MasterThemeRead, status_code=201)
-def create_theme(payload: MasterThemeCreate, db: Session = Depends(get_db)) -> MasterTheme:
-    theme = MasterTheme(**payload.model_dump())
+def create_theme(
+    payload: MasterThemeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MasterTheme:
+    theme = MasterTheme(**payload.model_dump(), owner_id=current_user.id)
     db.add(theme)
     db.commit()
     db.refresh(theme)

@@ -21,6 +21,8 @@ class Project(Base):
     image_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="openai")
     video_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="kling")
     music_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

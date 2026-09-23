@@ -16,8 +16,8 @@ function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(email, password)
-      navigate('/')
+      const user = await login(email, password)
+      navigate(user.role === 'reviewer' ? '/reviewer' : '/')
     } catch (err) {
       setError((err as Error).message)
     } finally {

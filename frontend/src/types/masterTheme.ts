@@ -8,6 +8,7 @@ export interface MasterTheme {
   animation_rules_json: Record<string, unknown> | null
   music_style_json: Record<string, unknown> | null
   reference_image: string | null
+  owner_id: number | null
   created_at: string
   updated_at: string
 }
