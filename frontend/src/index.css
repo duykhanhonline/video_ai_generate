@@ -69,6 +69,7 @@ body {
 .clip-thumbnail {
   display: block;
   width: 140px;
+  max-width: 100%;
   height: 140px;
   object-fit: cover;
   border-radius: 4px;
@@ -120,6 +121,7 @@ body {
 .clip-video {
   display: block;
   width: 180px;
+  max-width: 100%;
   border-radius: 4px;
   margin-bottom: 8px;
 }
@@ -224,7 +226,8 @@ body {
 
 .reference-input {
   display: block;
-  width: 240px;
+  width: 100%;
+  max-width: 240px;
   margin-top: 2px;
   padding: 4px 6px;
   font-family: inherit;
@@ -244,7 +247,7 @@ body {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
-  max-width: 280px;
+  max-width: min(280px, 100%);
 }
 
 .image-history-item {
