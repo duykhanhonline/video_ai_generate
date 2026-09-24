@@ -54,7 +54,8 @@ body {
 
 .image-prompt-input {
   display: block;
-  width: 260px;
+  width: 100%;
+  max-width: 260px;
   margin: 0 0 8px 0;
   padding: 6px;
   font-family: inherit;
