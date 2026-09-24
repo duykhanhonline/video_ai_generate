@@ -17,7 +17,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./data:/data
+      - ${DATA_PATH}:/data
     env_file:
       - .env
     depends_on:
@@ -30,7 +30,7 @@ services:
     build: ./backend
     volumes:
       - ./backend:/app
-      - ./data:/data
+      - ${DATA_PATH}:/data
     env_file:
       - .env
     depends_on:
