@@ -9,6 +9,7 @@ function RegisterPage() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('contributor')
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +20,7 @@ function RegisterPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await register(email, password, role)
+      await register(email, name, password, role)
       const user = await login(email, password)
       navigate(user.role === 'reviewer' ? '/reviewer' : '/')
     } catch (err) {
@@ -42,6 +43,15 @@ function RegisterPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Name
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
           />
         </label>

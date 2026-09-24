@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.asset import Asset
@@ -18,12 +19,15 @@ from app.models.master_theme import MasterTheme
 from app.models.music_track import MusicTrack
 from app.models.project import Project
 from app.models.prompt_version import PromptVersion
+from app.models.user import User
+from app.models.video_feedback import VideoFeedback
 from app.providers.registry import get_llm_provider
 from app.schemas.asset import AssetRead
 from app.schemas.clip import ClipRead, ClipUpdate, ImageGenerateRequest
 from app.schemas.completed_video import CompletedVideoRead
 from app.schemas.job import JobRead
 from app.schemas.render_manifest import RenderManifest
+from app.schemas.video_feedback import VideoFeedbackRead, VideoFeedbackUpsert
 from app.services.director_service import AIDirectorService
 from app.services.storage_service import StorageService
 from app.workers.image_tasks import generate_clip_image_task
@@ -300,6 +304,72 @@ def delete_completed_video(completed_video_id: int, db: Session = Depends(get_db
         db.delete(asset)
 
     db.commit()
+
+
+def _to_video_feedback_read(feedback: VideoFeedback, reviewer: User) -> VideoFeedbackRead:
+    return VideoFeedbackRead(
+        id=feedback.id,
+        completed_video_id=feedback.completed_video_id,
+        reviewer_id=feedback.reviewer_id,
+        reviewer_name=reviewer.name or reviewer.email,
+        feedback_text=feedback.feedback_text,
+        created_at=feedback.created_at,
+        updated_at=feedback.updated_at,
+    )
+
+
+@router.get("/completed-videos/{completed_video_id}/feedback", response_model=list[VideoFeedbackRead])
+def list_video_feedback(
+    completed_video_id: int, db: Session = Depends(get_db)
+) -> list[VideoFeedbackRead]:
+    video = db.get(CompletedVideo, completed_video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Completed video not found")
+
+    rows = db.execute(
+        select(VideoFeedback, User)
+        .join(User, VideoFeedback.reviewer_id == User.id)
+        .where(VideoFeedback.completed_video_id == completed_video_id)
+        .order_by(VideoFeedback.created_at.desc())
+    ).all()
+    return [_to_video_feedback_read(feedback, reviewer) for feedback, reviewer in rows]
+
+
+@router.put("/completed-videos/{completed_video_id}/feedback", response_model=VideoFeedbackRead)
+def upsert_video_feedback(
+    completed_video_id: int,
+    payload: VideoFeedbackUpsert,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> VideoFeedbackRead:
+    if current_user.role != "reviewer":
+        raise HTTPException(status_code=403, detail="Reviewer role required")
+
+    video = db.get(CompletedVideo, completed_video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Completed video not found")
+
+    feedback = db.scalars(
+        select(VideoFeedback).where(
+            VideoFeedback.completed_video_id == completed_video_id,
+            VideoFeedback.reviewer_id == current_user.id,
+        )
+    ).first()
+
+    if feedback is None:
+        feedback = VideoFeedback(
+            completed_video_id=completed_video_id,
+            reviewer_id=current_user.id,
+            feedback_text=payload.feedback_text,
+        )
+        db.add(feedback)
+    else:
+        feedback.feedback_text = payload.feedback_text
+
+    db.commit()
+    db.refresh(feedback)
+
+    return _to_video_feedback_read(feedback, current_user)
 
 
 @router.patch("/{clip_id}", response_model=ClipRead)

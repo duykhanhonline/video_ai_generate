@@ -82,24 +82,26 @@ function CategoriesPage() {
       {!loading && categories.length === 0 && <p>No categories yet.</p>}
 
       {categories.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((category) => (
-              <tr key={category.id}>
-                <td>{category.name}</td>
-                <td className="row-actions">
-                
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr key={category.id}>
+                  <td>{category.name}</td>
+                  <td className="row-actions">
+
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

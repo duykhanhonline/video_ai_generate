@@ -45,29 +45,31 @@ function ThemesPage() {
       {!loading && themes.length === 0 && <p>No master themes yet.</p>}
 
       {!loading && themes.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Concept</th>
-              <th>Updated</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {themes.map((theme) => (
-              <tr key={theme.id}>
-                <td>{theme.name}</td>
-                <td>{theme.concept}</td>
-                <td>{new Date(theme.updated_at).toLocaleString()}</td>
-                <td className="row-actions">
-                  <Link to={`/themes/${theme.id}`}>Edit</Link>
-                  <button onClick={() => handleDelete(theme.id)}>Delete</button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Concept</th>
+                <th>Updated</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {themes.map((theme) => (
+                <tr key={theme.id}>
+                  <td>{theme.name}</td>
+                  <td>{theme.concept}</td>
+                  <td>{new Date(theme.updated_at).toLocaleString()}</td>
+                  <td className="row-actions">
+                    <Link to={`/themes/${theme.id}`}>Edit</Link>
+                    <button onClick={() => handleDelete(theme.id)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

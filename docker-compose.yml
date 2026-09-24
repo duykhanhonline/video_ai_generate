@@ -7,10 +7,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://192.168.2.44:8000
     depends_on:
       - backend
-
+    restart: unless-stopped
   backend:
     build: ./backend
     ports:
@@ -24,6 +24,7 @@ services:
       - mysql
       - redis
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
 
   worker:
     build: ./backend
@@ -36,11 +37,13 @@ services:
       - redis
       - mysql
     command: celery -A app.workers.celery worker --loglevel=info
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
   mysql:
     image: mysql:8
@@ -55,7 +58,8 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - default
-      - db-network  
+      - db-network
+    restart: unless-stopped
 volumes:
   mysql_data:
 networks:

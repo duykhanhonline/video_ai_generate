@@ -665,6 +665,7 @@ function ProjectDetailPage() {
       <h2>Clips</h2>
       {clips.length === 0 && <p>No clips yet.</p>}
       {clips.length > 0 && (
+        <div className="overflow-x-auto">
         <table className="table">
           <thead>
             <tr>
@@ -986,6 +987,7 @@ function ProjectDetailPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       <h2>Music</h2>
@@ -994,7 +996,7 @@ function ProjectDetailPage() {
         project.
       </p>
 
-      <form onSubmit={handleUploadMusic} className="music-upload-form">
+      <form onSubmit={handleUploadMusic} className="music-upload-form flex-wrap">
         <label>
           Title
           <input
@@ -1077,6 +1079,7 @@ function ProjectDetailPage() {
       )}
 
       {renderJobs.length > 0 && (
+        <div className="overflow-x-auto">
         <table className="table">
           <thead>
             <tr>
@@ -1099,6 +1102,7 @@ function ProjectDetailPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {previewUrl && (

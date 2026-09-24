@@ -23,7 +23,7 @@ app = FastAPI(title="Ambient Video AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost"],
+    allow_origins=["http://localhost:5173", "http://localhost", "http://192.168.2.44"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

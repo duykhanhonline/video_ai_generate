@@ -24,28 +24,30 @@ function ReviewerDashboardPage() {
       {!loading && rows.length === 0 && <p>No projects yet.</p>}
 
       {rows.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Project Name</th>
-              <th>Completed Videos</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.project_id}>
-                <td>{row.category_name ?? '-'}</td>
-                <td>{row.project_name}</td>
-                <td>{row.completed_video_count}</td>
-                <td>
-                  <Link to={`/reviewer/projects/${row.project_id}`}>View Videos</Link>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Project Name</th>
+                <th>Completed Videos</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.project_id}>
+                  <td>{row.category_name ?? '-'}</td>
+                  <td>{row.project_name}</td>
+                  <td>{row.completed_video_count}</td>
+                  <td>
+                    <Link to={`/reviewer/projects/${row.project_id}`}>View Videos</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

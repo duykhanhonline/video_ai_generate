@@ -38,32 +38,34 @@ function ProjectsPage() {
       {!loading && projects.length === 0 && <p>No projects yet.</p>}
 
       {!loading && projects.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Master Theme</th>
-              <th>Category</th>
-              <th>Target Duration</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((project) => (
-              <tr key={project.id}>
-                <td>{project.name}</td>
-                <td>{themeNames[project.master_theme_id] ?? project.master_theme_id}</td>
-                <td>{project.category_id !== null ? (categoryNames[project.category_id] ?? '-') : '-'}</td>
-                <td>{project.target_duration}s</td>
-                <td>{project.status}</td>
-                <td>
-                  <Link to={`/projects/${project.id}`}>Open</Link>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Master Theme</th>
+                <th>Category</th>
+                <th>Target Duration</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <tr key={project.id}>
+                  <td>{project.name}</td>
+                  <td>{themeNames[project.master_theme_id] ?? project.master_theme_id}</td>
+                  <td>{project.category_id !== null ? (categoryNames[project.category_id] ?? '-') : '-'}</td>
+                  <td>{project.target_duration}s</td>
+                  <td>{project.status}</td>
+                  <td>
+                    <Link to={`/projects/${project.id}`}>Open</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

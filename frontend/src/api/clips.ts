@@ -4,6 +4,7 @@ import type { Job } from '../types/job'
 import type { Asset } from '../types/asset'
 import type { RenderManifest } from '../types/renderManifest'
 import type { CompletedVideo } from '../types/completedVideo'
+import type { VideoFeedback } from '../types/videoFeedback'
 
 export function generateImagePrompt(clipId: number): Promise<Clip> {
   return apiRequest(`/api/clips/${clipId}/image-prompt/generate`, { method: 'POST' })
@@ -85,4 +86,15 @@ export function listCompletedVideos(clipId: number): Promise<CompletedVideo[]> {
 
 export function deleteCompletedVideo(completedVideoId: number): Promise<void> {
   return apiRequest(`/api/clips/completed-videos/${completedVideoId}`, { method: 'DELETE' })
+}
+
+export function listVideoFeedback(completedVideoId: number): Promise<VideoFeedback[]> {
+  return apiRequest(`/api/clips/completed-videos/${completedVideoId}/feedback`)
+}
+
+export function saveVideoFeedback(completedVideoId: number, feedbackText: string): Promise<VideoFeedback> {
+  return apiRequest(`/api/clips/completed-videos/${completedVideoId}/feedback`, {
+    method: 'PUT',
+    body: JSON.stringify({ feedback_text: feedbackText }),
+  })
 }

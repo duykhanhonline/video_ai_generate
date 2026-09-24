@@ -16,7 +16,7 @@ function NavBar() {
   const { user, logout } = useAuth()
 
   return (
-    <nav className="nav">
+    <nav className="nav flex-wrap">
       {user?.role !== 'reviewer' && (
         <>
           <Link to="/">Themes</Link>
@@ -27,7 +27,7 @@ function NavBar() {
       {user?.role === 'reviewer' && <Link to="/reviewer">Review</Link>}
       {user && (
         <span className="nav-user">
-          {user.email} ({user.role})
+          {user.name ?? user.email} ({user.role})
           <button type="button" onClick={logout}>
             Log Out
           </button>
